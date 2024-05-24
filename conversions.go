@@ -430,6 +430,35 @@ func convertInMessage(
 		sh.Len = readSize
 		sh.Cap = readSize
 
+	case fusekernel.OpReaddirPlus:
+		in := (*fusekernel.ReadIn)(inMsg.Consume(fusekernel.ReadInSize(protocol)))
+		if in == nil {
+			return nil, errors.New("Corrupt OpReaddirPlus")
+		}
+
+		to := &fuseops.ReadDirOp{
+			Inode:  fuseops.InodeID(inMsg.Header().Nodeid),
+			Handle: fuseops.HandleID(in.Fh),
+			Offset: fuseops.DirOffset(in.Offset),
+			OpContext: fuseops.OpContext{
+				FuseID: inMsg.Header().Unique,
+				Pid:    inMsg.Header().Pid,
+				Uid:    inMsg.Header().Uid,
+			},
+		}
+		o = to
+
+		readSize := int(in.Size)
+		p := outMsg.Grow(readSize)
+		if p == nil {
+			return nil, fmt.Errorf("Can't grow for %d-byte read", readSize)
+		}
+
+		sh := (*reflect.SliceHeader)(unsafe.Pointer(&to.Dst))
+		sh.Data = uintptr(p)
+		sh.Len = readSize
+		sh.Cap = readSize
+
 	case fusekernel.OpRelease:
 		type input fusekernel.ReleaseIn
 		in := (*input)(inMsg.Consume(unsafe.Sizeof(input{})))

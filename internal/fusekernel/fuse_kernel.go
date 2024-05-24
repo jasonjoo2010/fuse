@@ -391,6 +391,7 @@ const (
 	OpPoll        = 40 // Linux?
 	OpBatchForget = 42
 	OpFallocate   = 43
+	OpReaddirPlus = 44
 
 	// OS X
 	OpSetvolname = 61
