@@ -198,6 +198,13 @@ func (c *Connection) Init() error {
 		initOp.Flags |= fusekernel.InitParallelDirOps
 	}
 
+	if c.cfg.EnableReaddirPlus {
+		initOp.Flags |= fusekernel.InitDoReaddirplus
+		if c.cfg.EnableReaddirAuto {
+			initOp.Flags |= fusekernel.InitReaddirplusAuto
+		}
+	}
+
 	return c.Reply(ctx, nil)
 }
 

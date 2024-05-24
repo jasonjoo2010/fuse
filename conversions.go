@@ -401,7 +401,7 @@ func convertInMessage(
 		}
 		o = to
 
-	case fusekernel.OpReaddir:
+	case fusekernel.OpReaddir, fusekernel.OpReaddirPlus:
 		in := (*fusekernel.ReadIn)(inMsg.Consume(fusekernel.ReadInSize(protocol)))
 		if in == nil {
 			return nil, errors.New("Corrupt OpReaddir")
@@ -417,7 +417,16 @@ func convertInMessage(
 				Uid:    inMsg.Header().Uid,
 			},
 		}
-		o = to
+
+		var sh *reflect.SliceHeader
+		if inMsg.Header().Opcode == fusekernel.OpReaddirPlus {
+			plus := &fuseops.ReadDirPlusOp{ReadDirOp: *to}
+			o = plus
+			sh = (*reflect.SliceHeader)(unsafe.Pointer(&plus.Dst))
+		} else {
+			o = to
+			sh = (*reflect.SliceHeader)(unsafe.Pointer(&to.Dst))
+		}
 
 		readSize := int(in.Size)
 		p := outMsg.Grow(readSize)
@@ -425,36 +434,6 @@ func convertInMessage(
 			return nil, fmt.Errorf("Can't grow for %d-byte read", readSize)
 		}
 
-		sh := (*reflect.SliceHeader)(unsafe.Pointer(&to.Dst))
-		sh.Data = uintptr(p)
-		sh.Len = readSize
-		sh.Cap = readSize
-
-	case fusekernel.OpReaddirPlus:
-		in := (*fusekernel.ReadIn)(inMsg.Consume(fusekernel.ReadInSize(protocol)))
-		if in == nil {
-			return nil, errors.New("Corrupt OpReaddirPlus")
-		}
-
-		to := &fuseops.ReadDirOp{
-			Inode:  fuseops.InodeID(inMsg.Header().Nodeid),
-			Handle: fuseops.HandleID(in.Fh),
-			Offset: fuseops.DirOffset(in.Offset),
-			OpContext: fuseops.OpContext{
-				FuseID: inMsg.Header().Unique,
-				Pid:    inMsg.Header().Pid,
-				Uid:    inMsg.Header().Uid,
-			},
-		}
-		o = to
-
-		readSize := int(in.Size)
-		p := outMsg.Grow(readSize)
-		if p == nil {
-			return nil, fmt.Errorf("Can't grow for %d-byte read", readSize)
-		}
-
-		sh := (*reflect.SliceHeader)(unsafe.Pointer(&to.Dst))
 		sh.Data = uintptr(p)
 		sh.Len = readSize
 		sh.Cap = readSize
@@ -894,6 +873,9 @@ func (c *Connection) kernelResponseForOp(
 		// convertInMessage already set up the destination buffer to be at the end
 		// of the out message. We need only shrink to the right size based on how
 		// much the user read.
+		m.ShrinkTo(buffer.OutMessageHeaderSize + o.BytesRead)
+
+	case *fuseops.ReadDirPlusOp:
 		m.ShrinkTo(buffer.OutMessageHeaderSize + o.BytesRead)
 
 	case *fuseops.ReleaseDirHandleOp:

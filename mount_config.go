@@ -190,6 +190,13 @@ type MountConfig struct {
 	// kernel
 	// Ref: https://github.com/torvalds/linux/commit/5c672ab3f0ee0f78f7acad183f34db0f8781a200
 	EnableParallelDirOps bool
+
+	// Flag to enable readirplus support.
+	EnableReaddirPlus bool
+
+	// Flag to automatically use readdirplug() when allowed to use readdirplus().
+	//	Only effects when set EnableReaddirPlus to true.
+	EnableReaddirAuto bool
 }
 
 // Create a map containing all of the key=value mount options to be given to
