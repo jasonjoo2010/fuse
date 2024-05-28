@@ -65,6 +65,9 @@ func (t *SampleTest) SetUp(ti *ogletest.TestInfo) {
 		cfg.DebugLogger = log.New(os.Stderr, "fuse: ", 0)
 	}
 
+	if cfg.FSName == "" {
+		cfg.FSName = "/fusetest"
+	}
 	err := t.initialize(ti.Ctx, t.Server, &cfg)
 	if err != nil {
 		panic(err)
